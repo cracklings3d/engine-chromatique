@@ -1,6 +1,13 @@
-#include <iostream>
+#include <glfw/glfw3.h>
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
-    return 0;
+  glfwInit();
+  auto w = glfwCreateWindow(2560, 1440, "App Chromatique", nullptr, nullptr);
+  glfwShowWindow(w);
+  while (!glfwWindowShouldClose(w)) {
+    glfwPollEvents();
+  }
+  glfwDestroyWindow(w);
+  glfwTerminate();
+  return 0;
 }
