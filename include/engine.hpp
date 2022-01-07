@@ -9,13 +9,17 @@
 namespace ec {
 class engine {
 public:
-  engine(const std::string &app_name = "");
+  explicit engine(const std::string &app_name = "");
 
 private:
-  inline const static std::vector<const char *> _instance_layers{"VK_LAYER_KHRONOS_validation"};
-  inline const static std::vector<const char *> _instance_extensions = {};
+  const std::vector<const char *> _instance_layers{"VK_LAYER_KHRONOS_validation"};
+  const std::vector<const char *> _instance_extensions = {};
 
   vk::Instance _vk_instance;
+  vk::PhysicalDevice _vk_physical_device;
+  vk::Device _vk_device;
+
+  int _vk_graphic_queue_family_index;
 };
 } // namespace ec
 
