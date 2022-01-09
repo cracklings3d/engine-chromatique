@@ -12,6 +12,15 @@ ec::engine::engine(const std::string &app_name) {
     _vk_application_info.pEngineName = "Engine Chromatique";
     _vk_application_info.pApplicationName = app_name.c_str();
 
+    uint32_t required_instance_extension_count;
+
+    { // Add GLFW Extensions
+      auto required_instance_extension_list = glfwGetRequiredInstanceExtensions(&required_instance_extension_count);
+      for (int j = 0; j < required_instance_extension_count; ++j) {
+        _instance_extensions.push_back(required_instance_extension_list[required_instance_extension_count]);
+      }
+    }
+
     vk::InstanceCreateInfo _vk_instance_create_info;
     _vk_instance_create_info.enabledExtensionCount = _instance_extensions.size();
     _vk_instance_create_info.ppEnabledExtensionNames = _instance_extensions.data();
@@ -39,11 +48,18 @@ ec::engine::engine(const std::string &app_name) {
     auto _qf_props = _vk_physical_device.getQueueFamilyProperties();
     for (int _qf_index = 0; _qf_index < _qf_props.size(); ++_qf_index) {
       if (_qf_props[_qf_index].queueFlags & vk::QueueFlagBits::eGraphics) {
-        _vk_graphic_queue_family_index = _qf_index;
+        _vk_queue_family_index = _qf_index;
       }
+      break;
     }
+    Ensures(_vk_queue_family_index >= 0);
+
+    vk::DeviceQueueCreateInfo _vk_queue_create_info;
+    _vk_queue_create_info.queueCount = 1;
 
     vk::DeviceCreateInfo _vk_device_create_info;
+    _vk_device_create_info.queueCreateInfoCount = 1;
+    _vk_device_create_info.pQueueCreateInfos = &_vk_queue_create_info;
     // TODO
     _vk_physical_device.createDevice(_vk_device_create_info);
   }

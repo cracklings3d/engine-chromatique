@@ -18,4 +18,3 @@ if (WIN32)
     target_link_libraries(engine_chromatique
             glfw3 vulkan-1)
 endif ()
-

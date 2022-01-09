@@ -3,6 +3,8 @@
 #ifndef EC_ENGINE_HPP
 #define EC_ENGINE_HPP
 
+#include <glfw/glfw3.h>
+
 #include <string>
 #include <vulkan/vulkan.hpp>
 
@@ -13,13 +15,14 @@ public:
 
 private:
   const std::vector<const char *> _instance_layers{"VK_LAYER_KHRONOS_validation"};
-  const std::vector<const char *> _instance_extensions = {};
+  std::vector<const char *> _instance_extensions = {};
 
   vk::Instance _vk_instance;
   vk::PhysicalDevice _vk_physical_device;
   vk::Device _vk_device;
+  vk::Queue _vk_queue;
 
-  int _vk_graphic_queue_family_index;
+  int _vk_queue_family_index = -1;
 };
 } // namespace ec
 
