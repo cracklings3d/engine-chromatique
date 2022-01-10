@@ -12,18 +12,13 @@ ec::engine::engine(const std::string &app_name) {
     _vk_application_info.pEngineName = "Engine Chromatique";
     _vk_application_info.pApplicationName = app_name.c_str();
 
-    uint32_t required_instance_extension_count;
-
-    { // Add GLFW Extensions
-      auto required_instance_extension_list = glfwGetRequiredInstanceExtensions(&required_instance_extension_count);
-      for (int j = 0; j < required_instance_extension_count; ++j) {
-        _instance_extensions.push_back(required_instance_extension_list[required_instance_extension_count]);
-      }
-    }
+    uint32_t required_device_extension_count;
+    glfwGetRequiredInstanceExtensions(&required_device_extension_count);
+    auto required_device_extension_list = glfwGetRequiredInstanceExtensions(&required_device_extension_count);
 
     vk::InstanceCreateInfo _vk_instance_create_info;
-    _vk_instance_create_info.enabledExtensionCount = _instance_extensions.size();
-    _vk_instance_create_info.ppEnabledExtensionNames = _instance_extensions.data();
+    _vk_instance_create_info.enabledExtensionCount = required_device_extension_count;
+    _vk_instance_create_info.ppEnabledExtensionNames = required_device_extension_list;
     _vk_instance_create_info.enabledLayerCount = _instance_layers.size();
     _vk_instance_create_info.ppEnabledLayerNames = _instance_layers.data();
     _vk_instance_create_info.pApplicationInfo = &_vk_application_info;
@@ -56,11 +51,23 @@ ec::engine::engine(const std::string &app_name) {
 
     vk::DeviceQueueCreateInfo _vk_queue_create_info;
     _vk_queue_create_info.queueCount = 1;
+    _vk_queue_create_info.pQueuePriorities = _vk_queue_priority_list.data();
+    _vk_queue_create_info.queueFamilyIndex = _vk_queue_family_index;
+
+    auto device_ext_props = _vk_physical_device.enumerateDeviceExtensionProperties();
+    auto device_features = _vk_physical_device.getFeatures();
 
     vk::DeviceCreateInfo _vk_device_create_info;
     _vk_device_create_info.queueCreateInfoCount = 1;
     _vk_device_create_info.pQueueCreateInfos = &_vk_queue_create_info;
-    // TODO
-    _vk_physical_device.createDevice(_vk_device_create_info);
+    _vk_device_create_info.enabledExtensionCount = _device_extensions.size();
+    _vk_device_create_info.ppEnabledExtensionNames = _device_extensions.data();
+    // TODO: Add _vk_device_create_info.pEnabledFeatures
+
+    _vk_device = _vk_physical_device.createDevice(_vk_device_create_info);
+    Ensures(_vk_device);
+
+    _vk_queue = _vk_device.getQueue(_vk_queue_family_index, 0);
+    Ensures(_vk_queue);
   }
 }

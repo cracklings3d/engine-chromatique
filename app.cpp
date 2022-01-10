@@ -1,9 +1,11 @@
+#include <gsl/gsl>
 #include "app.hpp"
 
 ec::app::app(const std::string& app_name) {
   _app_name = app_name;
-  glfwInit();
+  Ensures(glfwInit());
   _window = glfwCreateWindow(2560, 1440, app_name.c_str(), nullptr, nullptr);
+  Ensures(_window);
 }
 
 ec::app::~app() {
