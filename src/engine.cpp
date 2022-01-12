@@ -70,4 +70,19 @@ ec::engine::engine(const std::string &app_name) {
     _vk_queue = _vk_device.getQueue(_vk_queue_family_index, 0);
     Ensures(_vk_queue);
   }
+
+  { // Record commands
+    // TODO: move out of ctor.
+    vk::CommandPoolCreateInfo _vk_command_pool_create_info;
+    _vk_command_pool_create_info.queueFamilyIndex = _vk_queue_family_index;
+    _vk_command_pool = _vk_device.createCommandPool(_vk_command_pool_create_info);
+    Ensures(_vk_command_pool);
+
+    vk::CommandBufferAllocateInfo _vk_command_buffer_allocation_info;
+    _vk_command_buffer_allocation_info.commandPool = _vk_command_pool;
+    _vk_command_buffer_allocation_info.commandBufferCount = 1;
+    _vk_command_buffer_allocation_info.level = vk::CommandBufferLevel::ePrimary;
+    _vk_command_buffer = _vk_device.allocateCommandBuffers(_vk_command_buffer_allocation_info);
+    Ensures(_vk_command_buffer.size() > 0);
+  }
 }
