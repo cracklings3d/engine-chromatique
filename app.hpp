@@ -13,6 +13,10 @@
 #include "include/engine.hpp"
 
 namespace ec {
+struct surface {
+  vk::SurfaceKHR _vk_surface;
+};
+
 class app {
 public:
   explicit app(const std::string &app_name);

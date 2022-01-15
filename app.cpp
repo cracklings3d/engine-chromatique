@@ -15,6 +15,11 @@ ec::app::~app() {
 
 void ec::app::init() {
   _engine = std::make_shared<engine>(_app_name);
+  auto instance = _engine->get_instance();
+  VkSurfaceKHR vk_surface;
+  glfwCreateWindowSurface(instance, _window, nullptr, &vk_surface);
+  _engine->set_vk_surface(vk_surface);
+  _engine->init();
 }
 
 void ec::app::show() {

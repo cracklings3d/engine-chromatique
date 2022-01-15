@@ -16,14 +16,14 @@ ec::engine::engine(const std::string &app_name) {
     glfwGetRequiredInstanceExtensions(&required_device_extension_count);
     auto required_device_extension_list = glfwGetRequiredInstanceExtensions(&required_device_extension_count);
 
-    vk::InstanceCreateInfo _vk_instance_create_info;
-    _vk_instance_create_info.enabledExtensionCount = required_device_extension_count;
-    _vk_instance_create_info.ppEnabledExtensionNames = required_device_extension_list;
-    _vk_instance_create_info.enabledLayerCount = _instance_layers.size();
-    _vk_instance_create_info.ppEnabledLayerNames = _instance_layers.data();
-    _vk_instance_create_info.pApplicationInfo = &_vk_application_info;
+    vk::InstanceCreateInfo _vkci_instance;
+    _vkci_instance.enabledExtensionCount = required_device_extension_count;
+    _vkci_instance.ppEnabledExtensionNames = required_device_extension_list;
+    //    _vkci_instance.enabledLayerCount = _instance_layers.size();
+    //    _vkci_instance.ppEnabledLayerNames = _instance_layers.data();
+    _vkci_instance.pApplicationInfo = &_vk_application_info;
 
-    _vk_instance = vk::createInstance(_vk_instance_create_info);
+    _vk_instance = vk::createInstance(_vkci_instance);
     Ensures(_vk_instance);
   }
 
@@ -49,22 +49,22 @@ ec::engine::engine(const std::string &app_name) {
     }
     Ensures(_vk_queue_family_index >= 0);
 
-    vk::DeviceQueueCreateInfo _vk_queue_create_info;
-    _vk_queue_create_info.queueCount = 1;
-    _vk_queue_create_info.pQueuePriorities = _vk_queue_priority_list.data();
-    _vk_queue_create_info.queueFamilyIndex = _vk_queue_family_index;
+    vk::DeviceQueueCreateInfo _vkci_queue;
+    _vkci_queue.queueCount = 1;
+    _vkci_queue.pQueuePriorities = _vk_queue_priority_list.data();
+    _vkci_queue.queueFamilyIndex = _vk_queue_family_index;
 
     auto device_ext_props = _vk_physical_device.enumerateDeviceExtensionProperties();
     auto device_features = _vk_physical_device.getFeatures();
 
-    vk::DeviceCreateInfo _vk_device_create_info;
-    _vk_device_create_info.queueCreateInfoCount = 1;
-    _vk_device_create_info.pQueueCreateInfos = &_vk_queue_create_info;
-    _vk_device_create_info.enabledExtensionCount = _device_extensions.size();
-    _vk_device_create_info.ppEnabledExtensionNames = _device_extensions.data();
-    // TODO: Add _vk_device_create_info.pEnabledFeatures
+    vk::DeviceCreateInfo _vkci_device;
+    _vkci_device.queueCreateInfoCount = 1;
+    _vkci_device.pQueueCreateInfos = &_vkci_queue;
+    _vkci_device.enabledExtensionCount = _device_extensions.size();
+    _vkci_device.ppEnabledExtensionNames = _device_extensions.data();
+    // TODO: Add _vkci_device.pEnabledFeatures
 
-    _vk_device = _vk_physical_device.createDevice(_vk_device_create_info);
+    _vk_device = _vk_physical_device.createDevice(_vkci_device);
     Ensures(_vk_device);
 
     _vk_queue = _vk_device.getQueue(_vk_queue_family_index, 0);
@@ -73,16 +73,33 @@ ec::engine::engine(const std::string &app_name) {
 
   { // Record commands
     // TODO: move out of ctor.
-    vk::CommandPoolCreateInfo _vk_command_pool_create_info;
-    _vk_command_pool_create_info.queueFamilyIndex = _vk_queue_family_index;
-    _vk_command_pool = _vk_device.createCommandPool(_vk_command_pool_create_info);
+    vk::CommandPoolCreateInfo _vkci_command_pool;
+    _vkci_command_pool.queueFamilyIndex = _vk_queue_family_index;
+    _vk_command_pool = _vk_device.createCommandPool(_vkci_command_pool);
     Ensures(_vk_command_pool);
 
-    vk::CommandBufferAllocateInfo _vk_command_buffer_allocation_info;
-    _vk_command_buffer_allocation_info.commandPool = _vk_command_pool;
-    _vk_command_buffer_allocation_info.commandBufferCount = 1;
-    _vk_command_buffer_allocation_info.level = vk::CommandBufferLevel::ePrimary;
-    _vk_command_buffer = _vk_device.allocateCommandBuffers(_vk_command_buffer_allocation_info);
+    vk::CommandBufferAllocateInfo _vkai_command_buffer;
+    _vkai_command_buffer.commandPool = _vk_command_pool;
+    _vkai_command_buffer.commandBufferCount = 1;
+    _vkai_command_buffer.level = vk::CommandBufferLevel::ePrimary;
+    _vk_command_buffer = _vk_device.allocateCommandBuffers(_vkai_command_buffer);
     Ensures(_vk_command_buffer.size() > 0);
   }
+}
+
+void ec::engine::init() {
+  { // Swapchain
+    vk::SwapchainCreateInfoKHR _vkci_swapchain;
+    _vkci_swapchain.minImageCount = 3;
+    _vkci_swapchain.surface = _vk_surface;
+    //    _vkci_swapchain.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+    _vk_device.createSwapchainKHR(_vkci_swapchain);
+  }
+}
+
+vk::Instance ec::engine::get_instance() const {
+  return _vk_instance;
+}
+void ec::engine::set_vk_surface(VkSurfaceKHR const &surface) {
+  _vk_surface = surface;
 }

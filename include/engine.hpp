@@ -9,14 +9,22 @@
 #include <vulkan/vulkan.hpp>
 
 namespace ec {
+class app;
+
 class engine {
 public:
   explicit engine(const std::string &app_name = "");
+  void init();
+
+  [[nodiscard]] vk::Instance get_instance() const;
+
+  void set_vk_surface(const VkSurfaceKHR &surface);
 
 private:
-  const std::vector<const char *> _instance_layers = {"VK_LAYER_KHRONOS_validation"};
-  //  std::vector<const char *> _instance_extensions = {};
-  const std::vector<const char *> _device_extensions = {"VK_KHR_swapchain"};
+  const std::vector<const char *> _device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+
+  vk::SurfaceKHR _vk_surface;
+  vk::SwapchainKHR _vk_swapchain;
 
   vk::Instance _vk_instance;
   vk::PhysicalDevice _vk_physical_device;
