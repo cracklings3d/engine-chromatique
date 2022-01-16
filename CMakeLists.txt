@@ -17,4 +17,9 @@ if (WIN32)
 
     target_link_libraries(engine_chromatique
             glfw3 vulkan-1)
+elseif (UNIX)
+    target_include_directories(engine_chromatique PUBLIC
+            include /usr/include/)
+    target_link_libraries(engine_chromatique
+            glfw vulkan)
 endif ()

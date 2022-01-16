@@ -3,18 +3,21 @@
 #ifndef EC_ENGINE_HPP
 #define EC_ENGINE_HPP
 
-#include <glfw/glfw3.h>
+#include "surface.hpp"
+
+#include <GLFW/glfw3.h>
 
 #include <string>
 #include <vulkan/vulkan.hpp>
 
 namespace ec {
 class app;
+struct surface;
 
 class engine {
 public:
   explicit engine(const std::string &app_name = "");
-  void init();
+  void init(ec::surface surface);
 
   [[nodiscard]] vk::Instance get_instance() const;
 
@@ -33,7 +36,7 @@ private:
   vk::CommandPool _vk_command_pool;
   std::vector<vk::CommandBuffer> _vk_command_buffer;
 
-  const std::vector<float_t> _vk_queue_priority_list = {1.0f};
+  const std::vector<float> _vk_queue_priority_list = {1.0f};
   int _vk_queue_family_index = -1;
 };
 } // namespace ec

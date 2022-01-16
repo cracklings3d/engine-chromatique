@@ -1,6 +1,7 @@
 // Cracklings, 07/01/2022.
 
 #include "engine.hpp"
+#include "surface.hpp"
 #include <gsl/gsl>
 
 ec::engine::engine(const std::string &app_name) {
@@ -31,9 +32,10 @@ ec::engine::engine(const std::string &app_name) {
     auto _vk_physical_devices = _vk_instance.enumeratePhysicalDevices();
     for (auto _pd: _vk_physical_devices) {
       auto _pd_props = _pd.getProperties();
-      if (_pd_props.vendorID == 0x10DE) {
-        _vk_physical_device = _pd;
-      }
+      printf("%x\n", _pd_props.vendorID);
+      //      if (_pd_props.vendorID == 0x10DE) {
+      _vk_physical_device = _pd;
+      //      }
       break;
     }
     Ensures(_vk_physical_device);
@@ -87,12 +89,15 @@ ec::engine::engine(const std::string &app_name) {
   }
 }
 
-void ec::engine::init() {
+void ec::engine::init(ec::surface _surface) {
   { // Swapchain
     vk::SwapchainCreateInfoKHR _vkci_swapchain;
     _vkci_swapchain.minImageCount = 3;
-    _vkci_swapchain.surface = _vk_surface;
-    //    _vkci_swapchain.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+    _vkci_swapchain.surface = _surface._vk_surface;
+    _vkci_swapchain.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+    _vkci_swapchain.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
+    _vkci_swapchain.imageArrayLayers = 1;
+    _vkci_swapchain.imageExtent = _surface._vk_surface_extent;
     _vk_device.createSwapchainKHR(_vkci_swapchain);
   }
 }

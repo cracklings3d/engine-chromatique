@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 
+#include "surface.hpp"
 #include <vulkan/vulkan.hpp>
 // clang-format sorting barrier
 #include <GLFW/glfw3.h>
@@ -13,13 +14,10 @@
 #include "include/engine.hpp"
 
 namespace ec {
-struct surface {
-  vk::SurfaceKHR _vk_surface;
-};
 
 class app {
 public:
-  explicit app(const std::string &app_name);
+  explicit app(const std::string &app_name, uint32_t width = 1920, uint32_t height = 1080);
   ~app();
 
   void init();
@@ -28,6 +26,7 @@ public:
 private:
   std::string _app_name;
   GLFWwindow *_window;
+  surface _surface;
   std::shared_ptr<engine> _engine;
 };
 } // namespace ec
