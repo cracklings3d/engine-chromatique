@@ -91,10 +91,14 @@ ec::engine::engine(const std::string &app_name) {
 
 void ec::engine::init(ec::surface _surface) {
   { // Swapchain
+    auto supported_image_formats = _vk_physical_device.getSurfaceFormatsKHR(_surface._vk_surface);
+    // TODO: Pick format from supported ones.
+
     vk::SwapchainCreateInfoKHR _vkci_swapchain;
     _vkci_swapchain.minImageCount = 3;
     _vkci_swapchain.surface = _surface._vk_surface;
     _vkci_swapchain.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+    _vkci_swapchain.imageFormat = vk::Format::eB8G8R8A8Unorm;
     _vkci_swapchain.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
     _vkci_swapchain.imageArrayLayers = 1;
     _vkci_swapchain.imageExtent = _surface._vk_surface_extent;
