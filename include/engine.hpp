@@ -4,6 +4,7 @@
 #define EC_ENGINE_HPP
 
 #include "surface.hpp"
+#include "swapchain.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -17,17 +18,15 @@ struct surface;
 class engine {
 public:
   explicit engine(const std::string &app_name = "");
-  void init(ec::surface surface);
+  void init(std::shared_ptr<ec::surface> surface);
 
   [[nodiscard]] vk::Instance get_instance() const;
-
-  void set_vk_surface(const VkSurfaceKHR &surface);
 
 private:
   const std::vector<const char *> _device_extensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-  vk::SurfaceKHR _vk_surface;
-  vk::SwapchainKHR _vk_swapchain;
+  std::shared_ptr<swapchain> _swapchain = std::make_shared<swapchain>();
+  std::shared_ptr<surface> _surface = std::make_shared<surface>();
 
   vk::Instance _vk_instance;
   vk::PhysicalDevice _vk_physical_device;

@@ -3,6 +3,7 @@
 #include "engine.hpp"
 #include "surface.hpp"
 #include <gsl/gsl>
+#include <utility>
 
 ec::engine::engine(const std::string &app_name) {
   { // Instance
@@ -85,30 +86,30 @@ ec::engine::engine(const std::string &app_name) {
     _vkai_command_buffer.commandBufferCount = 1;
     _vkai_command_buffer.level = vk::CommandBufferLevel::ePrimary;
     _vk_command_buffer = _vk_device.allocateCommandBuffers(_vkai_command_buffer);
-    Ensures(_vk_command_buffer.size() > 0);
+    Ensures(!_vk_command_buffer.empty());
   }
 }
 
-void ec::engine::init(ec::surface _surface) {
+void ec::engine::init(std::shared_ptr<ec::surface> surface) {
+  _surface = std::move(surface);
   { // Swapchain
-    auto supported_image_formats = _vk_physical_device.getSurfaceFormatsKHR(_surface._vk_surface);
+    auto supported_image_formats = _vk_physical_device.getSurfaceFormatsKHR(_surface->_vk_surface);
     // TODO: Pick format from supported ones.
 
     vk::SwapchainCreateInfoKHR _vkci_swapchain;
     _vkci_swapchain.minImageCount = 3;
-    _vkci_swapchain.surface = _surface._vk_surface;
+    _vkci_swapchain.surface = _surface->_vk_surface;
     _vkci_swapchain.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
     _vkci_swapchain.imageFormat = vk::Format::eB8G8R8A8Unorm;
     _vkci_swapchain.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
     _vkci_swapchain.imageArrayLayers = 1;
-    _vkci_swapchain.imageExtent = _surface._vk_surface_extent;
-    _vk_device.createSwapchainKHR(_vkci_swapchain);
+    _vkci_swapchain.imageExtent = _surface->_vk_surface_extent;
+    _swapchain->_vk_swapchain = _vk_device.createSwapchainKHR(_vkci_swapchain);
+    Expects(_swapchain->_vk_swapchain);
+    _swapchain->_surface = _surface;
   }
 }
 
 vk::Instance ec::engine::get_instance() const {
   return _vk_instance;
-}
-void ec::engine::set_vk_surface(VkSurfaceKHR const &surface) {
-  _vk_surface = surface;
 }

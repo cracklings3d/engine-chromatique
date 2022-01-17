@@ -30,7 +30,7 @@ void ec::app::init() {
   VkSurfaceKHR vk_surface;
   glfwCreateWindowSurface(instance, _window, nullptr, &vk_surface);
   _surface._vk_surface = vk_surface;
-  _engine->init(_surface);
+  _engine->init(std::make_shared<ec::surface>(_surface));
 }
 
 void ec::app::show() {
