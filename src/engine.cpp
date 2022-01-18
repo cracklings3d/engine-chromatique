@@ -104,9 +104,29 @@ void ec::engine::init(std::shared_ptr<ec::surface> surface) {
     _vkci_swapchain.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
     _vkci_swapchain.imageArrayLayers = 1;
     _vkci_swapchain.imageExtent = _surface->_vk_surface_extent;
+    _vkci_swapchain.imageSharingMode = vk::SharingMode::eExclusive;
     _swapchain->_vk_swapchain = _vk_device.createSwapchainKHR(_vkci_swapchain);
     Expects(_swapchain->_vk_swapchain);
     _swapchain->_surface = _surface;
+
+    _swapchain->_vk_images = _vk_device.getSwapchainImagesKHR(_swapchain->_vk_swapchain);
+
+    for (auto & _vk_image : _swapchain->_vk_images) {
+      vk::ImageViewCreateInfo _vkci_image_view;
+      _vkci_image_view.image = _vk_image;
+      _vkci_image_view.viewType = vk::ImageViewType::e2D;
+//      _vkci_image_view.format = _surface->
+      _vkci_image_view.components.r = vk::ComponentSwizzle::eR;
+      _vkci_image_view.components.g = vk::ComponentSwizzle::eG;
+      _vkci_image_view.components.b = vk::ComponentSwizzle::eB;
+      _vkci_image_view.components.a = vk::ComponentSwizzle::eA;
+      _vk_device.createImageView(_vkci_image_view);
+      auto _vk_image_view = _vk_device.createImageView(_vkci_image_view);
+      Expects(_vk_image_view);
+
+      _swapchain->_vk_image_views.push_back(_vk_image_view);
+    }
+    Expects(_swapchain->_vk_image_views.size() == _swapchain->_vk_images.size());
   }
 }
 

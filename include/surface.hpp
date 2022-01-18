@@ -9,6 +9,8 @@ namespace ec {
 struct surface {
   vk::SurfaceKHR _vk_surface;
   vk::Extent2D _vk_surface_extent;
+
+  // TODO: Format?
 };
 } // namespace ec
 
