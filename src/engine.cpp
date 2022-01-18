@@ -33,10 +33,10 @@ ec::engine::engine(const std::string &app_name) {
     auto _vk_physical_devices = _vk_instance.enumeratePhysicalDevices();
     for (auto _pd: _vk_physical_devices) {
       auto _pd_props = _pd.getProperties();
-      printf("%x\n", _pd_props.vendorID);
-      //      if (_pd_props.vendorID == 0x10DE) {
-      _vk_physical_device = _pd;
-      //      }
+      //      printf("Vendor ID: %x\n", _pd_props.vendorID);
+      if (_pd_props.vendorID == 0x10DE) { // NVidia
+        _vk_physical_device = _pd;
+      }
       break;
     }
     Ensures(_vk_physical_device);
@@ -94,32 +94,42 @@ void ec::engine::init(std::shared_ptr<ec::surface> surface) {
   _surface = std::move(surface);
   { // Swapchain
     auto supported_image_formats = _vk_physical_device.getSurfaceFormatsKHR(_surface->_vk_surface);
+    _swapchain->_vk_image_format = supported_image_formats[0].format;
+    _swapchain->_vk_color_space = supported_image_formats[0].colorSpace;
     // TODO: Pick format from supported ones.
 
     vk::SwapchainCreateInfoKHR _vkci_swapchain;
     _vkci_swapchain.minImageCount = 3;
     _vkci_swapchain.surface = _surface->_vk_surface;
     _vkci_swapchain.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-    _vkci_swapchain.imageFormat = vk::Format::eB8G8R8A8Unorm;
-    _vkci_swapchain.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
+    _vkci_swapchain.imageFormat = _swapchain->_vk_image_format;
+    _vkci_swapchain.imageColorSpace = _swapchain->_vk_color_space;
     _vkci_swapchain.imageArrayLayers = 1;
     _vkci_swapchain.imageExtent = _surface->_vk_surface_extent;
     _vkci_swapchain.imageSharingMode = vk::SharingMode::eExclusive;
     _swapchain->_vk_swapchain = _vk_device.createSwapchainKHR(_vkci_swapchain);
     Expects(_swapchain->_vk_swapchain);
     _swapchain->_surface = _surface;
+  }
 
+  {
     _swapchain->_vk_images = _vk_device.getSwapchainImagesKHR(_swapchain->_vk_swapchain);
 
-    for (auto & _vk_image : _swapchain->_vk_images) {
+    for (auto &_vk_image: _swapchain->_vk_images) {
       vk::ImageViewCreateInfo _vkci_image_view;
       _vkci_image_view.image = _vk_image;
       _vkci_image_view.viewType = vk::ImageViewType::e2D;
-//      _vkci_image_view.format = _surface->
       _vkci_image_view.components.r = vk::ComponentSwizzle::eR;
       _vkci_image_view.components.g = vk::ComponentSwizzle::eG;
       _vkci_image_view.components.b = vk::ComponentSwizzle::eB;
       _vkci_image_view.components.a = vk::ComponentSwizzle::eA;
+      _vkci_image_view.subresourceRange.layerCount = 1;
+      _vkci_image_view.subresourceRange.baseArrayLayer = 0;
+      _vkci_image_view.subresourceRange.levelCount = 1;
+      _vkci_image_view.subresourceRange.baseMipLevel = 0;
+      _vkci_image_view.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+      _vkci_image_view.format = _swapchain->_vk_image_format;
+
       _vk_device.createImageView(_vkci_image_view);
       auto _vk_image_view = _vk_device.createImageView(_vkci_image_view);
       Expects(_vk_image_view);
