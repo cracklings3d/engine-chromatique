@@ -187,6 +187,9 @@ void ec::engine::init(std::shared_ptr<ec::surface> surface) {
     _vk_depth_view = _vk_device.createImageView(_vkci_depth_view);
     Ensures(_vk_depth_view);
   }
+
+  { // Uniform buffer
+  }
 }
 
 vk::Instance ec::engine::get_instance() const {
