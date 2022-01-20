@@ -18,6 +18,8 @@ struct surface;
 class engine {
 public:
   explicit engine(const std::string &app_name = "");
+  ~engine();
+
   void init(std::shared_ptr<ec::surface> surface);
 
   [[nodiscard]] vk::Instance get_instance() const;
@@ -35,8 +37,14 @@ private:
   vk::CommandPool _vk_command_pool;
   std::vector<vk::CommandBuffer> _vk_command_buffer;
 
+  vk::Image _vk_depth_image;
+  vk::DeviceMemory _vk_depth_buffer;
+  vk::ImageView _vk_depth_view;
+
   const std::vector<float> _vk_queue_priority_list = {1.0f};
   int _vk_queue_family_index = -1;
+
+  [[nodiscard]] uint32_t get_memory_type_index(const vk::MemoryRequirements &requirement) const;
 };
 } // namespace ec
 

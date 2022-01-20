@@ -90,6 +90,12 @@ ec::engine::engine(const std::string &app_name) {
   }
 }
 
+ec::engine::~engine() {
+  // TODO
+  //  _vk_device.destroy();
+  //  _vk_instance.destroy();
+}
+
 void ec::engine::init(std::shared_ptr<ec::surface> surface) {
   _surface = std::move(surface);
   { // Swapchain
@@ -108,11 +114,11 @@ void ec::engine::init(std::shared_ptr<ec::surface> surface) {
     _vkci_swapchain.imageExtent = _surface->_vk_surface_extent;
     _vkci_swapchain.imageSharingMode = vk::SharingMode::eExclusive;
     _swapchain->_vk_swapchain = _vk_device.createSwapchainKHR(_vkci_swapchain);
-    Expects(_swapchain->_vk_swapchain);
+    Ensures(_swapchain->_vk_swapchain);
     _swapchain->_surface = _surface;
   }
 
-  {
+  { // Swapchain image views
     _swapchain->_vk_images = _vk_device.getSwapchainImagesKHR(_swapchain->_vk_swapchain);
 
     for (auto &_vk_image: _swapchain->_vk_images) {
@@ -132,14 +138,67 @@ void ec::engine::init(std::shared_ptr<ec::surface> surface) {
 
       _vk_device.createImageView(_vkci_image_view);
       auto _vk_image_view = _vk_device.createImageView(_vkci_image_view);
-      Expects(_vk_image_view);
+      Ensures(_vk_image_view);
 
       _swapchain->_vk_image_views.push_back(_vk_image_view);
     }
-    Expects(_swapchain->_vk_image_views.size() == _swapchain->_vk_images.size());
+    Ensures(_swapchain->_vk_image_views.size() == _swapchain->_vk_images.size());
+  }
+
+  { // Depth buffer
+    vk::ImageCreateInfo _vkci_depth_image;
+    _vkci_depth_image.format = vk::Format::eD16Unorm;
+    _vkci_depth_image.extent.width = _surface->_vk_surface_extent.width;
+    _vkci_depth_image.extent.height = _surface->_vk_surface_extent.height;
+    _vkci_depth_image.extent.depth = 1;
+    _vkci_depth_image.arrayLayers = 1;
+    _vkci_depth_image.mipLevels = 1;
+    _vkci_depth_image.imageType = vk::ImageType::e2D;
+    _vkci_depth_image.sharingMode = vk::SharingMode::eExclusive;
+    _vkci_depth_image.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+    _vkci_depth_image.initialLayout = vk::ImageLayout::eUndefined;
+    _vkci_depth_image.samples = vk::SampleCountFlagBits::e1;
+
+    _vk_depth_image = _vk_device.createImage(_vkci_depth_image);
+    Ensures(_vk_depth_image);
+
+    auto _depth_memory_requirements = _vk_device.getImageMemoryRequirements(_vk_depth_image);
+    vk::MemoryAllocateInfo _vkai_depth_buffer;
+    _vkai_depth_buffer.allocationSize = _depth_memory_requirements.size;
+    _vkai_depth_buffer.memoryTypeIndex = get_memory_type_index(_depth_memory_requirements);
+    _vk_depth_buffer = _vk_device.allocateMemory(_vkai_depth_buffer);
+    Ensures(_vk_depth_image);
+
+    _vk_device.bindImageMemory(_vk_depth_image, _vk_depth_buffer, 0);
+
+    vk::ImageViewCreateInfo _vkci_depth_view;
+    _vkci_depth_view.image = _vk_depth_image;
+    _vkci_depth_view.format = vk::Format::eD16Unorm;
+    _vkci_depth_view.components.r = vk::ComponentSwizzle::eR;
+    _vkci_depth_view.components.g = vk::ComponentSwizzle::eG;
+    _vkci_depth_view.components.b = vk::ComponentSwizzle::eB;
+    _vkci_depth_view.components.a = vk::ComponentSwizzle::eA;
+    _vkci_depth_view.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
+    _vkci_depth_view.subresourceRange.baseMipLevel = 0;
+    _vkci_depth_view.subresourceRange.levelCount = 1;
+    _vkci_depth_view.subresourceRange.baseArrayLayer = 0;
+    _vkci_depth_view.subresourceRange.layerCount = 1;
+    _vkci_depth_view.viewType = vk::ImageViewType::e2D;
+    _vk_depth_view = _vk_device.createImageView(_vkci_depth_view);
+    Ensures(_vk_depth_view);
   }
 }
 
 vk::Instance ec::engine::get_instance() const {
   return _vk_instance;
+}
+uint32_t ec::engine::get_memory_type_index(const vk::MemoryRequirements &requirement) const {
+  Ensures(_vk_physical_device);
+  auto props = _vk_physical_device.getMemoryProperties();
+  for (int j = 0; j < props.memoryTypeCount; ++j) {
+    auto type = props.memoryTypes[j];
+    // We can do better than this
+    if (type.propertyFlags & vk::MemoryPropertyFlagBits::eDeviceLocal) return j;
+  }
+  return 0;
 }
