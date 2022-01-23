@@ -159,20 +159,20 @@ void ec::engine::init(std::shared_ptr<ec::surface> surface) {
     _vkci_depth_image.initialLayout = vk::ImageLayout::eUndefined;
     _vkci_depth_image.samples = vk::SampleCountFlagBits::e1;
 
-    _vk_depth_image = _vk_device.createImage(_vkci_depth_image);
-    Ensures(_vk_depth_image);
+    _vk_image_depth_buffer = _vk_device.createImage(_vkci_depth_image);
+    Ensures(_vk_image_depth_buffer);
 
-    auto _depth_memory_requirements = _vk_device.getImageMemoryRequirements(_vk_depth_image);
+    auto _memory_requirements = _vk_device.getImageMemoryRequirements(_vk_image_depth_buffer);
     vk::MemoryAllocateInfo _vkai_depth_buffer;
-    _vkai_depth_buffer.allocationSize = _depth_memory_requirements.size;
-    _vkai_depth_buffer.memoryTypeIndex = get_memory_type_index(_depth_memory_requirements);
-    _vk_depth_buffer = _vk_device.allocateMemory(_vkai_depth_buffer);
-    Ensures(_vk_depth_image);
+    _vkai_depth_buffer.allocationSize = _memory_requirements.size;
+    _vkai_depth_buffer.memoryTypeIndex = get_memory_type_index(_memory_requirements);
+    _vk_memory_depth_buffer = _vk_device.allocateMemory(_vkai_depth_buffer);
+    Ensures(_vk_image_depth_buffer);
 
-    _vk_device.bindImageMemory(_vk_depth_image, _vk_depth_buffer, 0);
+    _vk_device.bindImageMemory(_vk_image_depth_buffer, _vk_memory_depth_buffer, 0);
 
     vk::ImageViewCreateInfo _vkci_depth_view;
-    _vkci_depth_view.image = _vk_depth_image;
+    _vkci_depth_view.image = _vk_image_depth_buffer;
     _vkci_depth_view.format = vk::Format::eD16Unorm;
     _vkci_depth_view.components.r = vk::ComponentSwizzle::eR;
     _vkci_depth_view.components.g = vk::ComponentSwizzle::eG;
@@ -184,11 +184,50 @@ void ec::engine::init(std::shared_ptr<ec::surface> surface) {
     _vkci_depth_view.subresourceRange.baseArrayLayer = 0;
     _vkci_depth_view.subresourceRange.layerCount = 1;
     _vkci_depth_view.viewType = vk::ImageViewType::e2D;
-    _vk_depth_view = _vk_device.createImageView(_vkci_depth_view);
-    Ensures(_vk_depth_view);
+    _vk_image_view_depth_buffer = _vk_device.createImageView(_vkci_depth_view);
+    Ensures(_vk_image_view_depth_buffer);
   }
 
   { // Uniform buffer
+    // clang-format off
+    glm::vec3 eye     {0, 0, 30};
+    glm::vec3 world_up{0, 1, 0};
+    glm::vec3 origin  {};
+    glm::mat view = glm::lookAt(eye, origin, world_up);
+    glm::mat proj = glm::perspective(3.14159f / 2, 16 / 9.0f, 0.01f, 10000.0f);
+    glm::mat clip = glm::mat4(1.0f,  0.0f, 0.0f, 0.0f,
+                              0.0f, -1.0f, 0.0f, 0.0f,
+                              0.0f,  0.0f, 0.5f, 0.0f,
+                              0.0f,  0.0f, 0.5f, 1.0f);
+
+    glm::mat mvp = clip * proj * view;
+    // clang-format on
+
+    vk::BufferCreateInfo _vkci_uniform_buffer;
+    _vkci_uniform_buffer.size = sizeof(mvp);
+    _vkci_uniform_buffer.usage = vk::BufferUsageFlagBits::eUniformBuffer;
+    _vkci_uniform_buffer.queueFamilyIndexCount = 0;
+    _vkci_uniform_buffer.pQueueFamilyIndices = nullptr;
+    _vkci_uniform_buffer.sharingMode = vk::SharingMode::eExclusive;
+    _vk_buffer_uniform_buffer = _vk_device.createBuffer(_vkci_uniform_buffer);
+    Ensures(_vk_buffer_uniform_buffer);
+
+    auto _memory_requirements = _vk_device.getBufferMemoryRequirements(_vk_buffer_uniform_buffer);
+    vk::MemoryAllocateInfo _vkai_uniform_buffer;
+    _vkai_uniform_buffer.allocationSize = _memory_requirements.size;
+    _vkai_uniform_buffer.memoryTypeIndex = get_memory_type_index(_memory_requirements);
+    _vk_memory_uniform_buffer = _vk_device.allocateMemory(_vkai_uniform_buffer);
+    Ensures(_vk_memory_uniform_buffer);
+
+    auto _uniform_buffer_handle = _vk_device.mapMemory(_vk_memory_uniform_buffer, 0, _memory_requirements.size);
+    memcpy(_uniform_buffer_handle, &mvp, sizeof(mvp));
+    _vk_device.unmapMemory(_vk_memory_uniform_buffer);
+
+    _vk_device.bindBufferMemory(_vk_buffer_uniform_buffer, _vk_memory_uniform_buffer, 0);
+  }
+
+  { // Pipeline
+    vk::PipelineLayoutCreateInfo _vkci_pipeline_layout;
   }
 }
 

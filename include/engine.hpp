@@ -10,6 +10,8 @@
 
 #include <string>
 #include <vulkan/vulkan.hpp>
+#include <glm/glm.hpp>
+#include <glm/ext.hpp>
 
 namespace ec {
 class app;
@@ -37,9 +39,13 @@ private:
   vk::CommandPool _vk_command_pool;
   std::vector<vk::CommandBuffer> _vk_command_buffer;
 
-  vk::Image _vk_depth_image;
-  vk::DeviceMemory _vk_depth_buffer;
-  vk::ImageView _vk_depth_view;
+  // TODO: Depth buffer
+  vk::Image _vk_image_depth_buffer;
+  vk::DeviceMemory _vk_memory_depth_buffer;
+  vk::ImageView _vk_image_view_depth_buffer;
+
+  vk::Buffer _vk_buffer_uniform_buffer;
+  vk::DeviceMemory _vk_memory_uniform_buffer;
 
   const std::vector<float> _vk_queue_priority_list = {1.0f};
   int _vk_queue_family_index = -1;
