@@ -6,12 +6,12 @@
 #include <memory>
 #include <string>
 
-#include "surface.hpp"
+#include "src/vulkan_rhi/surface.hpp"
 #include <vulkan/vulkan.hpp>
 // clang-format sorting barrier
 #include <GLFW/glfw3.h>
 
-#include "include/engine.hpp"
+#include "src/engine.hpp"
 
 namespace ec {
 

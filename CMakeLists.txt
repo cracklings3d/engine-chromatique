@@ -7,7 +7,7 @@ if (WIN32)
     link_directories(dependencies/lib/win $ENV{VULKAN_SDK}/lib)
 endif ()
 
-add_executable(engine_chromatique app.cpp app.hpp src/engine.cpp include/engine.hpp include/swapchain.hpp)
+add_executable(engine_chromatique app.cpp app.hpp src/engine.cpp src/engine.hpp src/vulkan_rhi/swapchain.hpp src/world.cpp src/world.hpp src/vulkan_rhi/device.hpp src/vulkan_rhi/device.cpp src/vulkan_rhi/command_pool.cpp src/vulkan_rhi/command_pool.hpp)
 
 if (WIN32)
     target_include_directories(engine_chromatique PUBLIC

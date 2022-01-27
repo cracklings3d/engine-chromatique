@@ -1,8 +1,9 @@
 // Cracklings, 07/01/2022.
 
 #include "engine.hpp"
-#include "surface.hpp"
+#include "vulkan_rhi/surface.hpp"
 #include <gsl/gsl>
+#include <memory>
 #include <utility>
 
 ec::engine::engine(const std::string &app_name) {
@@ -29,77 +30,27 @@ ec::engine::engine(const std::string &app_name) {
     Ensures(_vk_instance);
   }
 
-  { // Physical Device
-    auto _vk_physical_devices = _vk_instance.enumeratePhysicalDevices();
-    for (auto _pd: _vk_physical_devices) {
-      auto _pd_props = _pd.getProperties();
-      //      printf("Vendor ID: %x\n", _pd_props.vendorID);
-      if (_pd_props.vendorID == 0x10DE) { // NVidia
-        _vk_physical_device = _pd;
-      }
-      break;
-    }
-    Ensures(_vk_physical_device);
-  }
+  _device = std::make_shared<device>(_vk_instance);
+  _device->init();
 
-  { // Device
-    auto _qf_props = _vk_physical_device.getQueueFamilyProperties();
-    for (int _qf_index = 0; _qf_index < _qf_props.size(); ++_qf_index) {
-      if (_qf_props[_qf_index].queueFlags & vk::QueueFlagBits::eGraphics) {
-        _vk_queue_family_index = _qf_index;
-      }
-      break;
-    }
-    Ensures(_vk_queue_family_index >= 0);
-
-    vk::DeviceQueueCreateInfo _vkci_queue;
-    _vkci_queue.queueCount = 1;
-    _vkci_queue.pQueuePriorities = _vk_queue_priority_list.data();
-    _vkci_queue.queueFamilyIndex = _vk_queue_family_index;
-
-    auto device_ext_props = _vk_physical_device.enumerateDeviceExtensionProperties();
-    auto device_features = _vk_physical_device.getFeatures();
-
-    vk::DeviceCreateInfo _vkci_device;
-    _vkci_device.queueCreateInfoCount = 1;
-    _vkci_device.pQueueCreateInfos = &_vkci_queue;
-    _vkci_device.enabledExtensionCount = _device_extensions.size();
-    _vkci_device.ppEnabledExtensionNames = _device_extensions.data();
-    // TODO: Add _vkci_device.pEnabledFeatures
-
-    _vk_device = _vk_physical_device.createDevice(_vkci_device);
-    Ensures(_vk_device);
-
-    _vk_queue = _vk_device.getQueue(_vk_queue_family_index, 0);
-    Ensures(_vk_queue);
-  }
-
-  { // Record commands
-    // TODO: move out of ctor.
-    vk::CommandPoolCreateInfo _vkci_command_pool;
-    _vkci_command_pool.queueFamilyIndex = _vk_queue_family_index;
-    _vk_command_pool = _vk_device.createCommandPool(_vkci_command_pool);
-    Ensures(_vk_command_pool);
-
-    vk::CommandBufferAllocateInfo _vkai_command_buffer;
-    _vkai_command_buffer.commandPool = _vk_command_pool;
-    _vkai_command_buffer.commandBufferCount = 1;
-    _vkai_command_buffer.level = vk::CommandBufferLevel::ePrimary;
-    _vk_command_buffer = _vk_device.allocateCommandBuffers(_vkai_command_buffer);
-    Ensures(!_vk_command_buffer.empty());
-  }
+  _command_pool = std::make_shared<command_pool>(_device);
+  _command_buffer = std::make_shared<command_buffer>(_device, _command_pool);
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "modernize-use-equals-default"
 ec::engine::~engine() {
   // TODO
-  //  _vk_device.destroy();
+  //  _device->get_vk_device().destroy();
   //  _vk_instance.destroy();
 }
+#pragma clang diagnostic pop
 
-void ec::engine::init(std::shared_ptr<ec::surface> surface) {
-  _surface = std::move(surface);
+void ec::engine::init(const std::shared_ptr<ec::surface> &surface) {
+  _surface = surface;
+
   { // Swapchain
-    auto supported_image_formats = _vk_physical_device.getSurfaceFormatsKHR(_surface->_vk_surface);
+    auto supported_image_formats = _device->get_vk_physical_device().getSurfaceFormatsKHR(_surface->_vk_surface);
     _swapchain->_vk_image_format = supported_image_formats[0].format;
     _swapchain->_vk_color_space = supported_image_formats[0].colorSpace;
     // TODO: Pick format from supported ones.
@@ -113,13 +64,13 @@ void ec::engine::init(std::shared_ptr<ec::surface> surface) {
     _vkci_swapchain.imageArrayLayers = 1;
     _vkci_swapchain.imageExtent = _surface->_vk_surface_extent;
     _vkci_swapchain.imageSharingMode = vk::SharingMode::eExclusive;
-    _swapchain->_vk_swapchain = _vk_device.createSwapchainKHR(_vkci_swapchain);
+    _swapchain->_vk_swapchain = _device->get_vk_device().createSwapchainKHR(_vkci_swapchain);
     Ensures(_swapchain->_vk_swapchain);
     _swapchain->_surface = _surface;
   }
 
   { // Swapchain image views
-    _swapchain->_vk_images = _vk_device.getSwapchainImagesKHR(_swapchain->_vk_swapchain);
+    _swapchain->_vk_images = _device->get_vk_device().getSwapchainImagesKHR(_swapchain->_vk_swapchain);
 
     for (auto &_vk_image: _swapchain->_vk_images) {
       vk::ImageViewCreateInfo _vkci_image_view;
@@ -136,8 +87,8 @@ void ec::engine::init(std::shared_ptr<ec::surface> surface) {
       _vkci_image_view.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
       _vkci_image_view.format = _swapchain->_vk_image_format;
 
-      _vk_device.createImageView(_vkci_image_view);
-      auto _vk_image_view = _vk_device.createImageView(_vkci_image_view);
+      _device->get_vk_device().createImageView(_vkci_image_view);
+      auto _vk_image_view = _device->get_vk_device().createImageView(_vkci_image_view);
       Ensures(_vk_image_view);
 
       _swapchain->_vk_image_views.push_back(_vk_image_view);
@@ -159,17 +110,18 @@ void ec::engine::init(std::shared_ptr<ec::surface> surface) {
     _vkci_depth_image.initialLayout = vk::ImageLayout::eUndefined;
     _vkci_depth_image.samples = vk::SampleCountFlagBits::e1;
 
-    _vk_image_depth_buffer = _vk_device.createImage(_vkci_depth_image);
+    _vk_image_depth_buffer = _device->get_vk_device().createImage(_vkci_depth_image);
     Ensures(_vk_image_depth_buffer);
 
-    auto _memory_requirements = _vk_device.getImageMemoryRequirements(_vk_image_depth_buffer);
+    auto _memory_requirements = _device->get_vk_device().getImageMemoryRequirements(_vk_image_depth_buffer);
     vk::MemoryAllocateInfo _vkai_depth_buffer;
     _vkai_depth_buffer.allocationSize = _memory_requirements.size;
-    _vkai_depth_buffer.memoryTypeIndex = get_memory_type_index(_memory_requirements);
-    _vk_memory_depth_buffer = _vk_device.allocateMemory(_vkai_depth_buffer);
+    _vkai_depth_buffer.memoryTypeIndex =
+        get_memory_type_index(_memory_requirements, vk::MemoryPropertyFlagBits::eDeviceLocal);
+    _vk_memory_depth_buffer = _device->get_vk_device().allocateMemory(_vkai_depth_buffer);
     Ensures(_vk_image_depth_buffer);
 
-    _vk_device.bindImageMemory(_vk_image_depth_buffer, _vk_memory_depth_buffer, 0);
+    _device->get_vk_device().bindImageMemory(_vk_image_depth_buffer, _vk_memory_depth_buffer, 0);
 
     vk::ImageViewCreateInfo _vkci_depth_view;
     _vkci_depth_view.image = _vk_image_depth_buffer;
@@ -184,7 +136,7 @@ void ec::engine::init(std::shared_ptr<ec::surface> surface) {
     _vkci_depth_view.subresourceRange.baseArrayLayer = 0;
     _vkci_depth_view.subresourceRange.layerCount = 1;
     _vkci_depth_view.viewType = vk::ImageViewType::e2D;
-    _vk_image_view_depth_buffer = _vk_device.createImageView(_vkci_depth_view);
+    _vk_image_view_depth_buffer = _device->get_vk_device().createImageView(_vkci_depth_view);
     Ensures(_vk_image_view_depth_buffer);
   }
 
@@ -209,38 +161,105 @@ void ec::engine::init(std::shared_ptr<ec::surface> surface) {
     _vkci_uniform_buffer.queueFamilyIndexCount = 0;
     _vkci_uniform_buffer.pQueueFamilyIndices = nullptr;
     _vkci_uniform_buffer.sharingMode = vk::SharingMode::eExclusive;
-    _vk_buffer_uniform_buffer = _vk_device.createBuffer(_vkci_uniform_buffer);
+    _vk_buffer_uniform_buffer = _device->get_vk_device().createBuffer(_vkci_uniform_buffer);
     Ensures(_vk_buffer_uniform_buffer);
 
-    auto _memory_requirements = _vk_device.getBufferMemoryRequirements(_vk_buffer_uniform_buffer);
+    auto _memory_requirements = _device->get_vk_device().getBufferMemoryRequirements(_vk_buffer_uniform_buffer);
     vk::MemoryAllocateInfo _vkai_uniform_buffer;
     _vkai_uniform_buffer.allocationSize = _memory_requirements.size;
-    _vkai_uniform_buffer.memoryTypeIndex = get_memory_type_index(_memory_requirements);
-    _vk_memory_uniform_buffer = _vk_device.allocateMemory(_vkai_uniform_buffer);
+    _vkai_uniform_buffer.memoryTypeIndex =
+        get_memory_type_index(_memory_requirements, vk::MemoryPropertyFlagBits::eHostVisible);
+    _vk_memory_uniform_buffer = _device->get_vk_device().allocateMemory(_vkai_uniform_buffer);
     Ensures(_vk_memory_uniform_buffer);
 
-    auto _uniform_buffer_handle = _vk_device.mapMemory(_vk_memory_uniform_buffer, 0, _memory_requirements.size);
+    auto _uniform_buffer_handle =
+        _device->get_vk_device().mapMemory(_vk_memory_uniform_buffer, 0, _memory_requirements.size);
     memcpy(_uniform_buffer_handle, &mvp, sizeof(mvp));
-    _vk_device.unmapMemory(_vk_memory_uniform_buffer);
+    _device->get_vk_device().unmapMemory(_vk_memory_uniform_buffer);
 
-    _vk_device.bindBufferMemory(_vk_buffer_uniform_buffer, _vk_memory_uniform_buffer, 0);
+    _device->get_vk_device().bindBufferMemory(_vk_buffer_uniform_buffer, _vk_memory_uniform_buffer, 0);
   }
 
-  { // Pipeline
-    vk::PipelineLayoutCreateInfo _vkci_pipeline_layout;
-  }
+  { // Descriptor set uniform buffer
+   {// Layout
+    vk::DescriptorSetLayoutBinding _vk_descriptor_set_layout_binding;
+  _vk_descriptor_set_layout_binding.binding = 0;
+  _vk_descriptor_set_layout_binding.descriptorType = vk::DescriptorType::eUniformBuffer;
+  _vk_descriptor_set_layout_binding.descriptorCount = 1;
+  _vk_descriptor_set_layout_binding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+  vk::DescriptorSetLayoutCreateInfo _vkci_descriptor_set_layout;
+  _vkci_descriptor_set_layout.bindingCount = 1;
+  _vkci_descriptor_set_layout.pBindings = &_vk_descriptor_set_layout_binding;
+
+  auto layout0 = _device->get_vk_device().createDescriptorSetLayout(_vkci_descriptor_set_layout);
+  _vk_descriptor_set_layout_list_uniform_buffer.push_back(layout0);
+  Ensures(_vk_descriptor_set_layout_list_uniform_buffer.size() == 1);
+}
+{ // Resource
+  vk::DescriptorPoolSize size0 = {};
+  size0.descriptorCount = 1;
+  size0.type = vk::DescriptorType::eUniformBuffer;
+  _vk_descriptor_pool_size.push_back(size0);
+
+  vk::DescriptorPoolCreateInfo _vkci_descriptor_pool;
+  _vkci_descriptor_pool.maxSets = 1;
+  _vkci_descriptor_pool.pPoolSizes = _vk_descriptor_pool_size.data();
+  _vkci_descriptor_pool.poolSizeCount = _vk_descriptor_pool_size.size();
+  _vk_descriptor_pool = _device->get_vk_device().createDescriptorPool(_vkci_descriptor_pool);
+  Ensures(_vk_descriptor_pool);
+
+  vk::DescriptorSetAllocateInfo _vkai_descriptor_set;
+  _vkai_descriptor_set.descriptorPool = _vk_descriptor_pool;
+  _vkai_descriptor_set.descriptorSetCount = _vk_descriptor_set_layout_list_uniform_buffer.size();
+  _vkai_descriptor_set.pSetLayouts = _vk_descriptor_set_layout_list_uniform_buffer.data();
+  _vk_descriptor_set_list_uniform_buffer = _device->get_vk_device().allocateDescriptorSets(_vkai_descriptor_set);
+  Ensures(_vk_descriptor_set_list_uniform_buffer.size() == 1);
 }
 
-vk::Instance ec::engine::get_instance() const {
-  return _vk_instance;
+{ // Pipeline
+  vk::PipelineLayoutCreateInfo _vkci_pipeline_layout;
+  _vkci_pipeline_layout.setLayoutCount = _vk_descriptor_set_layout_list_uniform_buffer.size();
+  _vkci_pipeline_layout.pSetLayouts = _vk_descriptor_set_layout_list_uniform_buffer.data();
+  _vk_pipeline_layout = _device->get_vk_device().createPipelineLayout(_vkci_pipeline_layout);
+  Ensures(_vk_pipeline_layout);
 }
-uint32_t ec::engine::get_memory_type_index(const vk::MemoryRequirements &requirement) const {
-  Ensures(_vk_physical_device);
-  auto props = _vk_physical_device.getMemoryProperties();
+}
+
+{ // Render pass
+  {
+      //
+
+  }
+
+  { // Pass assembling
+    vk::RenderPassCreateInfo _vkci_render_pass;
+    // TODO
+    _vk_render_pass = _device->get_vk_device().createRenderPass(_vkci_render_pass);
+    Ensures(_vk_render_pass);
+  }
+}
+}
+
+vk::Instance ec::engine::get_instance() const { return _vk_instance; }
+
+uint32_t ec::engine::get_memory_type_index(const vk::MemoryRequirements &requirement,
+                                           const vk::MemoryPropertyFlags &flags) const {
+  Ensures(_device->get_vk_physical_device());
+  auto props = _device->get_vk_physical_device().getMemoryProperties();
   for (int j = 0; j < props.memoryTypeCount; ++j) {
     auto type = props.memoryTypes[j];
     // We can do better than this
-    if (type.propertyFlags & vk::MemoryPropertyFlagBits::eDeviceLocal) return j;
+    if (type.propertyFlags & flags) return j;
   }
   return 0;
+}
+
+void ec::engine::update_scene() {
+  vk::DescriptorBufferInfo db;
+  db.buffer = _vk_buffer_uniform_buffer;
+  vk::WriteDescriptorSet _vk_write_descriptor_set;
+  // TODO: fill this
+  std::vector<vk::WriteDescriptorSet> _vk_write_descriptor_set_list = {_vk_write_descriptor_set};
+  _device->get_vk_device().updateDescriptorSets(_vk_write_descriptor_set_list, {});
 }
